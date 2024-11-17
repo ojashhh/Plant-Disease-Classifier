@@ -8,6 +8,7 @@ import tensorflow as tf
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras import layers, models
+import kagglehub
 
 # Ensure necessary directories exist
 os.makedirs("datasets", exist_ok=True)
@@ -23,38 +24,21 @@ CLASS_INDICES_PATH = "model/class_indices.json"
 st.title("Plant Disease Prediction - End to End")
 st.write("This app predicts plant diseases using a pre-trained Convolutional Neural Network.")
 
-# Kaggle Credentials Upload
-st.sidebar.header("Kaggle Setup")
-uploaded_kaggle_file = st.sidebar.file_uploader("Upload `kaggle.json` file", type="json")
-
-if uploaded_kaggle_file:
-    with open("kaggle.json", "wb") as f:
-        f.write(uploaded_kaggle_file.getbuffer())
-    os.environ["KAGGLE_CONFIG_DIR"] = os.getcwd()
-    st.sidebar.success("Kaggle credentials uploaded!")
-
-# Dataset Download
-if st.sidebar.button("Download Dataset"):
-    if not uploaded_kaggle_file:
-        st.sidebar.error("Please upload your `kaggle.json` file first.")
-    else:
-        st.sidebar.write("Downloading dataset...")
-        os.system("kaggle datasets download -d abdallahalidev/plantvillage-dataset -p datasets")
-        st.sidebar.success("Dataset downloaded!")
-
-# Dataset Extraction
-if st.sidebar.button("Extract Dataset"):
-    if not os.path.exists(DATASET_PATH):
-        st.sidebar.error("Dataset not found. Please download it first.")
-    else:
-        with ZipFile(DATASET_PATH, "r") as zip_ref:
+# Dataset Download and Extraction with kagglehub
+if st.sidebar.button("Download and Extract Dataset"):
+    st.sidebar.write("Downloading and extracting dataset using kagglehub...")
+    dataset_path = kagglehub.dataset_download("abdallahalidev/plantvillage-dataset", dest_dir="datasets")
+    if dataset_path:
+        with ZipFile(dataset_path, "r") as zip_ref:
             zip_ref.extractall(EXTRACT_PATH)
-        st.sidebar.success("Dataset extracted!")
+        st.sidebar.success("Dataset downloaded and extracted!")
+    else:
+        st.sidebar.error("Failed to download dataset. Ensure Kaggle credentials are configured.")
 
 # Train Model
 if st.sidebar.button("Train Model"):
     if not os.path.exists(EXTRACT_PATH):
-        st.sidebar.error("Dataset not found. Please extract it first.")
+        st.sidebar.error("Dataset not found. Please download and extract it first.")
     else:
         st.sidebar.write("Training model...")
 
@@ -63,7 +47,7 @@ if st.sidebar.button("Train Model"):
         img_size = 224
         batch_size = 32
 
-        data_gen = ImageDataGenerator(rescale=1.0/255, validation_split=0.2)
+        data_gen = ImageDataGenerator(rescale=1.0 / 255, validation_split=0.2)
 
         train_generator = data_gen.flow_from_directory(
             base_dir,
